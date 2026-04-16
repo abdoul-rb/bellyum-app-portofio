@@ -14,7 +14,6 @@ import { Loader2, Moon, Sun } from 'lucide-react';
 const Settings = () => {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -38,7 +37,6 @@ const Settings = () => {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       toast.success('Mot de passe mis à jour');
-      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
