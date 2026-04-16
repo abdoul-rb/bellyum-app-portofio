@@ -1,0 +1,1 @@
+ALTER TABLE public.assets ALTER COLUMN variation TYPE numeric(15,4);
