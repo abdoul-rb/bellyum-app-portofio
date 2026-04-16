@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Holding, HoldingWithCalculations, calculateHoldingMetrics } from '@/types/asset';
+import { Holding } from '@/types/asset';
+import { calculateHoldingMetrics, calculatePortfolioSummary } from '@/lib/calculations';
 import { TransactionFormData, SyncFormData } from '@/types/transaction';
 import { toast } from 'sonner';
 
@@ -28,7 +29,7 @@ export const useHoldings = (portfolioId: string | null) => {
     mutationFn: async (formData: TransactionFormData) => {
       if (!user || !portfolioId) throw new Error('Non authentifié');
 
-      // 1. Insert transaction
+      // 1. Insérer la transaction dans le journal
       const { error: txError } = await supabase
         .from('transactions')
         .insert([{
@@ -45,7 +46,7 @@ export const useHoldings = (portfolioId: string | null) => {
 
       if (txError) throw txError;
 
-      // 2. Update holding
+      // 2. Récupérer la position existante
       const { data: existing } = await supabase
         .from('holdings')
         .select('*')
@@ -59,19 +60,14 @@ export const useHoldings = (portfolioId: string | null) => {
         const oldFees = existing?.total_fees ?? 0;
 
         const newQty = oldQty + formData.quantity;
-        const newInvested = oldInvested + (formData.quantity * formData.price);
+        const newInvested = oldInvested + formData.quantity * formData.price;
         const newAvgPrice = newQty > 0 ? newInvested / newQty : 0;
         const newFees = oldFees + formData.fees;
 
         if (existing) {
           const { error } = await supabase
             .from('holdings')
-            .update({
-              quantity: newQty,
-              average_price: newAvgPrice,
-              total_invested: newInvested,
-              total_fees: newFees,
-            })
+            .update({ quantity: newQty, average_price: newAvgPrice, total_invested: newInvested, total_fees: newFees })
             .eq('id', existing.id);
           if (error) throw error;
         } else {
@@ -89,17 +85,25 @@ export const useHoldings = (portfolioId: string | null) => {
         }
       } else if (formData.type === 'SELL') {
         if (!existing) throw new Error('Aucune position à vendre');
+        if (formData.quantity > existing.quantity) {
+          throw new Error('Quantité à vendre supérieure à la position existante');
+        }
+
         const newQty = existing.quantity - formData.quantity;
-        if (newQty <= 0) {
-          const { error } = await supabase
-            .from('holdings')
-            .delete()
-            .eq('id', existing.id);
+
+        if (newQty === 0) {
+          const { error } = await supabase.from('holdings').delete().eq('id', existing.id);
           if (error) throw error;
         } else {
+          // Réduire les frais proportionnellement à la quantité restante
+          const ratio = newQty / existing.quantity;
           const { error } = await supabase
             .from('holdings')
-            .update({ quantity: newQty, total_invested: newQty * existing.average_price })
+            .update({
+              quantity: newQty,
+              total_invested: newQty * existing.average_price,
+              total_fees: existing.total_fees * ratio,
+            })
             .eq('id', existing.id);
           if (error) throw error;
         }
@@ -111,7 +115,7 @@ export const useHoldings = (portfolioId: string | null) => {
       toast.success('Transaction enregistrée');
     },
     onError: (error) => {
-      toast.error('Erreur: ' + error.message);
+      toast.error('Erreur : ' + error.message);
     },
   });
 
@@ -121,7 +125,6 @@ export const useHoldings = (portfolioId: string | null) => {
 
       const fees = formData.total_fees ?? 0;
 
-      // Insert SYNC transaction
       const { error: txError } = await supabase
         .from('transactions')
         .insert([{
@@ -176,27 +179,15 @@ export const useHoldings = (portfolioId: string | null) => {
       toast.success('Position synchronisée');
     },
     onError: (error) => {
-      toast.error('Erreur: ' + error.message);
+      toast.error('Erreur : ' + error.message);
     },
   });
 
-  const summary = {
-    totalInvested: holdings.reduce((s, h) => s + h.total_invested, 0),
-    totalFees: holdings.reduce((s, h) => s + h.total_fees, 0),
-    totalCurrentValue: holdings.reduce((s, h) => s + (h as HoldingWithCalculations).current_value, 0),
-    positionCount: holdings.length,
-    get totalGainLoss() { return this.totalCurrentValue - this.totalInvested - this.totalFees; },
-    get globalPerformance() {
-      const base = this.totalInvested + this.totalFees;
-      return base > 0 ? (this.totalGainLoss / base) * 100 : 0;
-    },
-  };
-
   return {
-    holdings: holdings as HoldingWithCalculations[],
+    holdings,
     isLoading,
     recordTransaction,
     syncHolding,
-    summary,
+    summary: calculatePortfolioSummary(holdings),
   };
 };
