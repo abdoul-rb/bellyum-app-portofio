@@ -5,6 +5,7 @@ import { useHoldings } from '@/hooks/useHoldings';
 import { useAssets } from '@/hooks/useAssets';
 import { GlobalSummary } from '@/components/portfolio/GlobalSummary';
 import { HoldingsTable } from '@/components/portfolio/HoldingsTable';
+import { TopFlopTable } from '@/components/portfolio/TopFlopTable';
 import { StatCard } from '@/components/ui/stat-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -74,6 +75,9 @@ const Dashboard = () => {
         <StatCard title="Portefeuilles" value={String(portfolios.length)} />
         <StatCard title="Positions" value={String(positionCount)} />
       </div>
+
+      {/* Top 5 / Flop 5 BRVM */}
+      <TopFlopTable />
 
       {/* Portfolio list with holdings */}
       {portfolios.length === 0 ? (
