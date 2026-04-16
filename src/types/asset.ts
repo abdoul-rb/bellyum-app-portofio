@@ -51,20 +51,8 @@ export interface HoldingWithCalculations extends Holding {
   gain_pct: number;
 }
 
-export const calculateHoldingMetrics = (holding: Holding): HoldingWithCalculations => {
-  const currentPrice = holding.asset?.current_price ?? 0;
-  const current_value = holding.quantity * currentPrice;
-  const costBasis = holding.quantity * holding.average_price + holding.total_fees;
-  const gain_loss = current_value - costBasis;
-  const gain_pct = costBasis > 0 ? (gain_loss / costBasis) * 100 : 0;
-
-  return {
-    ...holding,
-    current_value,
-    gain_loss,
-    gain_pct,
-  };
-};
+// Re-export pour compatibilité avec les imports existants
+export { calculateHoldingMetrics } from '@/lib/calculations';
 
 export const ASSET_TYPE_LABELS: Record<string, string> = {
   action: 'Action',
