@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -17,16 +16,9 @@ import { Asset } from '@/types/asset';
 import { TransactionFormData } from '@/types/transaction';
 import { useAssets } from '@/hooks/useAssets';
 import { cn } from '@/lib/utils';
+import { transactionSchema } from '@/lib/schemas';
 
-const schema = z.object({
-  asset_id: z.string().min(1, "Sélectionnez un actif"),
-  type: z.enum(['BUY', 'SELL']),
-  quantity: z.coerce.number().min(0.0001, 'Quantité min. 0.0001'),
-  price: z.coerce.number().min(0.0001, 'Prix min. 0.0001'),
-  fees: z.coerce.number().min(0, 'Les frais doivent être ≥ 0'),
-  transaction_date: z.string().min(1, 'La date est requise'),
-  notes: z.string().optional(),
-});
+const schema = transactionSchema;
 
 interface Props {
   open: boolean;
@@ -72,8 +64,8 @@ export const RecordTransactionModal = ({ open, onOpenChange, onSubmit, isLoading
   useEffect(() => {
     if (watchedAssetId) {
       const asset = assets.find(a => a.id === watchedAssetId);
-      if (asset?.current_price) {
-        form.setValue('price', asset.current_price);
+      if (asset && asset.current_price !== null && asset.current_price !== undefined) {
+        form.setValue('price', asset.current_price, { shouldDirty: true, shouldValidate: true });
       }
     }
   }, [watchedAssetId, assets, form]);
@@ -103,7 +95,7 @@ export const RecordTransactionModal = ({ open, onOpenChange, onSubmit, isLoading
                       )}
                       onClick={() => { field.onChange(t); setSelectedType(t); }}
                     >
-                      {t === 'BUY' ? '🟢 Achat' : '🔴 Vente'}
+                      {t === 'BUY' ? 'Achat' : 'Vente'}
                     </Button>
                   ))}
                 </div>

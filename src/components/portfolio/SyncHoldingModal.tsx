@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -15,13 +14,9 @@ import {
 } from '@/components/ui/select';
 import { SyncFormData } from '@/types/transaction';
 import { useAssets } from '@/hooks/useAssets';
+import { syncHoldingSchema } from '@/lib/schemas';
 
-const schema = z.object({
-  asset_id: z.string().min(1, "Sélectionnez un actif"),
-  quantity: z.coerce.number().min(0, 'Quantité ≥ 0'),
-  average_price: z.coerce.number().min(0, 'Prix ≥ 0'),
-  transaction_date: z.string().min(1, 'La date est requise'),
-});
+const schema = syncHoldingSchema;
 
 interface Props {
   open: boolean;
